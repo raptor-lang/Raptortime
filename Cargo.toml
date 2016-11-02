@@ -1,0 +1,7 @@
+[package]
+name = "raptortime"
+version = "0.1.0"
+authors = ["VelocityRa <makren67@gmail.com>"]
+
+[dependencies]
+argparse = "*"
