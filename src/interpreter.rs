@@ -18,11 +18,11 @@ impl Interpreter {
     pub fn new(mut data: Vec<u8>) -> Interpreter {
         let i = Interpreter {
             header: read_header(&data),
-            bytecode: data.drain(..HEADER_SIZE).collect(),
+            bytecode: data.drain(HEADER_SIZE..).collect(),
             stack: Vec::new(),
             memory: Vec::new(),
         };
-
+        
         i
     }
 
