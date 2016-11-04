@@ -6,7 +6,6 @@ use std::path::Path;
 
 
 pub fn should_open<P: AsRef<Path>>(path: P) -> bool {
-    // Create a Path and a Display to the desired file
     let path = path.as_ref();
     if path.is_dir() {
         return false;
@@ -40,14 +39,13 @@ pub fn try_open_file<P: AsRef<Path>>(file_path: P, debug: bool) -> Vec<u8> {
 
 
 fn open_file<P: AsRef<Path>>(file_path: P) -> io::Result< Vec<u8> > {
-
     // try! to open the file
     let mut file = try!(File::open(file_path));
 
-    // Create the buffer
+    // create the buffer
     let mut file_buffer: Vec<u8> = Vec::new();
 
-    // Read the data
+    // try! to read the data
     try!(file.read_to_end(&mut file_buffer));
 
     // no panic! issued so we're good

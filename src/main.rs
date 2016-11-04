@@ -19,7 +19,7 @@ fn main() {
         input: String::new(),
     };
 
-    {   // this block limits the scope of borrows ap.refer()
+    {   // this block limits the scope of borrows from ap.refer() calls
         let mut ap = ArgumentParser::new();
         ap.set_description("RaptorScript Runtime/Interpreter.");
         ap.refer(&mut options.debug)
@@ -34,7 +34,7 @@ fn main() {
         ap.parse_args_or_exit();
     }
 
-    if !options.input.eq("") {
+    if !options.input.is_empty() {
         if utils::should_open(&options.input) {
             let bytecode = utils::try_open_file(&options.input, options.debug);
             // TODO: DO STUFF
