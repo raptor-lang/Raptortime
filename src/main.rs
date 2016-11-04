@@ -1,10 +1,11 @@
 extern crate argparse;
-
-use argparse::{ArgumentParser, StoreTrue, Store, Print};
-
 #[macro_use]
 mod logger;
 mod utils;
+mod interpreter;
+use interpreter::Interpreter;
+
+use argparse::{ArgumentParser, StoreTrue, Store, Print};
 
 pub static ACCEPTABLE_EXTENSIONS: [&'static str; 2] = ["crap", "crapt"];
 
@@ -36,10 +37,11 @@ fn main() {
 
     if !options.input.is_empty() {
         if utils::should_open(&options.input) {
-            let bytecode = utils::try_open_file(&options.input, options.debug);
-            // TODO: DO STUFF
+            let data = utils::try_open_file(&options.input, options.debug);
+            let mut interpreter = Interpreter::new(data);
+            interpreter.run();
         } else {
-            panic!("Invalid input file extension.");
+            panic!("Invalid input file extension. Accepted formats are .crapt and .crap");
         }
     } else {
         println!("No input file given. Use -h or --help for help.");

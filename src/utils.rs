@@ -38,7 +38,7 @@ pub fn try_open_file<P: AsRef<Path>>(file_path: P, debug: bool) -> Vec<u8> {
 }
 
 
-fn open_file<P: AsRef<Path>>(file_path: P) -> io::Result< Vec<u8> > {
+fn open_file<P: AsRef<Path>>(file_path: P) -> io::Result<Vec<u8>> {
     // try! to open the file
     let mut file = try!(File::open(file_path));
 
