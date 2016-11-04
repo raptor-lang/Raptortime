@@ -4,6 +4,7 @@ extern crate byteorder;
 #[macro_use]
 mod logger;
 mod utils;
+mod header;
 mod interpreter;
 use interpreter::Interpreter;
 

@@ -4,7 +4,6 @@ use std::fs::File;
 use std::error::Error;
 use std::path::Path;
 
-
 pub fn should_open<P: AsRef<Path>>(path: P) -> bool {
     let path = path.as_ref();
     if path.is_dir() {
@@ -36,7 +35,6 @@ pub fn try_open_file<P: AsRef<Path>>(file_path: P, debug: bool) -> Vec<u8> {
         },
     }
 }
-
 
 fn open_file<P: AsRef<Path>>(file_path: P) -> io::Result<Vec<u8>> {
     // try! to open the file
