@@ -22,7 +22,7 @@ impl Interpreter {
             stack: Vec::new(),
             memory: Vec::new(),
         };
-        
+
         i
     }
 
@@ -33,8 +33,7 @@ impl Interpreter {
 
 // TODO: Move all header stuff to another module
 
-const HEADER_SIZE: usize = 8;
-const HEADER_OFFSET: usize = 0;
+pub const HEADER_SIZE: usize = 8;
 const MAGIC_VALUE: u32 = 0x5AB70500;
 
 #[derive(Default)]
@@ -77,13 +76,10 @@ pub fn read_header(data: &Vec<u8>) -> RaptorHeader {
 
 
 fn read_header_impl(data: &Vec<u8>) -> RaptorHeader {
-    use std::slice;
-    use std::io::Read;
-
     let mut buffer: [u8; HEADER_SIZE] = [0u8; HEADER_SIZE];
 
     for i in 0..HEADER_SIZE {
-        buffer[i] = data[i + HEADER_OFFSET];
+        buffer[i] = data[i];
     }
 
     let mut buffer_slice: &[u8] = &buffer;
@@ -99,4 +95,14 @@ fn read_header_impl(data: &Vec<u8>) -> RaptorHeader {
 }
 
 
-// TODO: Add tests
+#[cfg(test)]
+mod header_tests {
+    use super::*;
+
+    #[test]
+    fn header_size() {
+        use std::mem;
+
+        assert_eq!(HEADER_SIZE, mem::size_of::<RaptorHeader>());
+    }
+}
