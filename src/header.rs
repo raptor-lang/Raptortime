@@ -6,8 +6,8 @@ const MAGIC_VALUE: u32 = 0x5AB70500;
 
 #[derive(Default)]
 pub struct RaptorHeader {
-    magic: u32,     // Magic number + padding ( 0x5AB70500 )
-    var_count: u32,     // Number of variables
+    magic: u32,      // Magic number + padding ( 0x5AB70500 )
+    var_count: u32,  // Number of variables
 }
 
 impl RaptorHeader {
@@ -28,12 +28,12 @@ impl fmt::Debug for RaptorHeader {
     }
 }
 
-pub fn read_header(data: &Vec<u8>) -> RaptorHeader {
+pub fn read_header(data: &[u8]) -> RaptorHeader {
     if data.len() < HEADER_SIZE  {
         panic!("Invalid header size");
     }
     
-    let header = read_header_impl(&data);
+    let header = read_header_impl(data);
     if !header.verify() {
         panic!("Invalid header magic");
     }
@@ -42,22 +42,12 @@ pub fn read_header(data: &Vec<u8>) -> RaptorHeader {
     header
 }
 
-
-fn read_header_impl(data: &Vec<u8>) -> RaptorHeader {
-    let mut buffer: [u8; HEADER_SIZE] = [0u8; HEADER_SIZE];
-
-    for i in 0..HEADER_SIZE {
-        buffer[i] = data[i];
-    }
-
-    let mut buffer_slice: &[u8] = &buffer;
-
+fn read_header_impl(mut data: &[u8]) -> RaptorHeader {
     let mut header: RaptorHeader = Default::default();
     
-    header.magic = buffer_slice.read_u32::<BigEndian>().unwrap();
-    header.var_count = buffer_slice.read_u32::<BigEndian>().unwrap();
+    header.magic = data.read_u32::<BigEndian>().unwrap();
+    header.var_count = data.read_u32::<BigEndian>().unwrap();
     
-    print!("{:04X}",header.magic);
     debug!("Read header: {:#?}", header);
     header
 }

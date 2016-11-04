@@ -11,7 +11,6 @@ pub struct Interpreter {
     memory: Vec<i32>,
 }
 
-// TODO: Use more slices
 impl Interpreter {
     pub fn new(mut data: Vec<u8>) -> Interpreter {
         let i = Interpreter {
