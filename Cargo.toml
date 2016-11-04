@@ -5,3 +5,4 @@ authors = ["VelocityRa <makren67@gmail.com>"]
 
 [dependencies]
 argparse = "*"
+byteorder = "0.5"
