@@ -1,4 +1,6 @@
 extern crate argparse;
+extern crate byteorder;
+
 #[macro_use]
 mod logger;
 mod utils;

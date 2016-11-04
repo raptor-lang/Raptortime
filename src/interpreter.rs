@@ -1,4 +1,6 @@
+
 use std::fmt;
+use byteorder::{BigEndian, ReadBytesExt};
 
 #[derive(Debug, Default)]
 pub struct Interpreter {
@@ -73,6 +75,7 @@ pub fn read_header(data: &Vec<u8>) -> RaptorHeader {
     header
 }
 
+
 fn read_header_impl(data: &Vec<u8>) -> RaptorHeader {
     use std::slice;
     use std::io::Read;
@@ -86,17 +89,11 @@ fn read_header_impl(data: &Vec<u8>) -> RaptorHeader {
     let mut buffer_slice: &[u8] = &buffer;
 
     let mut header: RaptorHeader = Default::default();
-
-    unsafe {
-        let header_slice = slice::from_raw_parts_mut(
-            &mut header as *mut _ as *mut u8,
-            HEADER_SIZE
-        );
-        
-        // `read_exact()` comes from `Read` impl for `&[u8]`
-        buffer_slice.read_exact(header_slice).unwrap();
-    }
-
+    
+    header.magic = buffer_slice.read_u32::<BigEndian>().unwrap();
+    header.var_count = buffer_slice.read_u32::<BigEndian>().unwrap();
+    
+    print!("{:04X}",header.magic);
     debug!("Read header: {:#?}", header);
     header
 }
