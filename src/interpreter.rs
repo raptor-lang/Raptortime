@@ -21,12 +21,7 @@ impl Interpreter {
             memory: Vec::new(),
         };
 
-        if i.header.verify() {
-            debug!("Header verified");
-            i
-        } else {
-            panic!("Invalid header");
-        }
+        i
     }
 
     pub fn run(&mut self) {
@@ -60,11 +55,25 @@ impl fmt::Debug for RaptorHeader {
         }}",
             self.magic,
             self.var_count
-            )
+        )
     }
 }
 
 pub fn read_header(data: &Vec<u8>) -> RaptorHeader {
+    if data.len() < HEADER_SIZE  {
+        panic!("Invalid header size");
+    }
+    
+    let header = read_header_impl(&data);
+    if !header.verify() {
+        panic!("Invalid header magic");
+    }
+
+    debug!("Header verified");
+    header
+}
+
+fn read_header_impl(data: &Vec<u8>) -> RaptorHeader {
     use std::slice;
     use std::io::Read;
 
