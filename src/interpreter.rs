@@ -29,6 +29,7 @@ impl Interpreter {
 
     pub fn run(&mut self, options: &::Options) {
         use std::ops::*;
+        use std::cmp::*;
 
         debug!("Running...");
         debug!("Bytecode: {:?}", self.bytecode);
@@ -71,8 +72,33 @@ impl Interpreter {
                     let val = self.stack.drain(final_length..).fold(
                         0, |acc, x| acc.$op(x)
                     );
-                    self.stack.push(val);
+                    push!(val);
                 })
+            }
+            macro_rules! reljump {
+                ($op:ident) => ({
+                    let top = pop!().unwrap();
+                    if top.$op(&0) {
+                        reljump!();
+                    } else {
+                        self.get_next_4_bytes();
+                        if debug {debug!("Jump not taken"); }
+                    }
+                });
+                () => ({
+                    let offset = (self.get_next_4_bytes() - 1) as i32;
+                    // Need this if because you can't have negative usizes
+                    if offset > 0 {
+                        if debug {debug!("RELJUMP: {}", offset);}
+                        self.program_counter += offset as usize;
+                        if offset == 1 {debug!("RELJUMP 1 is redundant. This is a compiler bug")}
+                    } else if offset < 0 {
+                        if debug {debug!("RELJUMP: {}", offset);}
+                        self.program_counter -= (-offset) as usize;
+                    } else {
+                        warn!("Invalid reljump offset: 0");
+                    }
+                });
             }
             // TODO: More macros, less code
 
@@ -100,68 +126,39 @@ impl Interpreter {
                 Instr::AND =>       { operation!(bitand); },
                 Instr::OR =>        { operation!(bitor);  },
                 Instr::NOT =>       {
-                    let val = self.stack.pop().unwrap();
+                    let val = pop!().unwrap();
                     push!(val.not());
                 },
                 Instr::COMP => {
-                    let a = self.stack.pop(); let b = self.stack.pop();
-                    self.stack.push(if a > b {1} else if a < b {-1} else {0});
+                    let a = pop!(); let b = pop!();
+                    push!(if a > b {1} else if a < b {-1} else {0});
                 },
                 Instr::COMP_LT => {
-                    let a = self.stack.pop(); let b = self.stack.pop();
-                    self.stack.push(if a > b {1} else {0});
+                    let a = pop!(); let b = pop!();
+                    push!(if a < b {1} else {0});
                 },
                 Instr::COMP_EQ => {
-                    let a = self.stack.pop(); let b = self.stack.pop();
-                    self.stack.push(if a == b {1} else {0});
+                    let a = pop!(); let b = pop!();
+                    push!(if a == b {1} else {0});
                 },
                 Instr::COMP_GT => {
-                    let a = self.stack.pop(); let b = self.stack.pop();
-                    self.stack.push(if a < b {1} else {0});
+                    let a = pop!(); let b = pop!();
+                    push!(if a > b {1} else {0});
                 },
-                // TODO: Refactor RELJUMPs
-                Instr::RELJUMP => {
-                    let offset = self.get_next_4_bytes() as i32;
-                    // Need this if because you can't have negative usizes
-                    if offset > 0 {
-                        if debug {debug!("RELJUMP: {}", offset);}
-                        self.program_counter += offset as usize;
-                    } else if offset < 0 {
-                        if debug {debug!("RELJUMP: {}", offset);}
-                        self.program_counter -= (-offset) as usize;
-                    } else {
-                        warn!("Invalid reljump offset: 0");
-                    }
-                },
-                Instr::RELJUMP_GT => {},    // TODO
-                Instr::RELJUMP_LT => {},    // TODO
-                Instr::RELJUMP_EQ => {
-                    let offset = self.get_next_4_bytes() as i32;
-                    let top = self.stack.pop().unwrap();
-                    if top == 0 {
-                        if offset > 0 {
-                            if debug {debug!("RELJUMP: {}", offset);}
-                            self.program_counter += offset as usize;
-                        } else if offset < 0 {
-                            if debug {debug!("RELJUMP: {}", offset);}
-                            self.program_counter -= (-offset) as usize;
-                        } else {
-                            warn!("Invalid reljump offset: 0");
-                        }
-                    } else {
-                        if debug {debug!("Jump not taken"); }
-                    }
-                },
+                Instr::RELJUMP => {reljump!();},
+                Instr::RELJUMP_GT => {reljump!(gt);},
+                Instr::RELJUMP_LT => {reljump!(lt);},
+                Instr::RELJUMP_EQ => {reljump!(eq);},
                 Instr::STORE => {
                     let index = self.get_next_4_bytes() as usize;
-                    self.memory[index] = self.stack.pop().unwrap();
+                    self.memory[index] = pop!().unwrap();
                 },
                 Instr::LOAD => {
                     let index = self.get_next_4_bytes() as usize;
-                    self.stack.push(self.memory[index]);
+                    push!(self.memory[index]);
                 },
                 Instr::PRINT => {
-                    println!("PRINT: {}", self.stack.pop().unwrap());
+                    println!("PRINT: {}", pop!().unwrap());
                 },
                 Instr::DUMP_STACK => {
                     println!("{:?}", self.stack);
