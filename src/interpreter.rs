@@ -80,9 +80,9 @@ impl Interpreter {
                 Instr::NOP => {},
                 Instr::HALT => {
                     println!("HALT issued, stopped execution.");
-                    if (debug) {
-                        debug!("STACK:\n{:?}", self.stack);
-                        debug!("MEMORY:\n{:?}", self.memory);
+                    if debug {
+                        debug!("Stack: {:?}", self.stack);
+                        debug!("MEMORY: {:?}", self.memory);
                     }
                 },
                 Instr::ICONST => {
