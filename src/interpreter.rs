@@ -82,7 +82,7 @@ impl Interpreter {
                     println!("HALT issued, stopped execution.");
                     if debug {
                         debug!("Stack: {:?}", self.stack);
-                        debug!("MEMORY: {:?}", self.memory);
+                        debug!("Memory: {:?}", self.memory);
                     }
                 },
                 Instr::ICONST => {
