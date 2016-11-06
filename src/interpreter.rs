@@ -16,14 +16,14 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new(mut data: Vec<u8>) -> Interpreter {
-        let i = Interpreter {
+        let mut i = Interpreter {
             header: read_header(&data),
             bytecode: data.drain(HEADER_SIZE..).collect(),
             stack: Vec::new(),
             memory: Vec::new(),
             program_counter: 0,
         };
-
+        i.memory.resize(i.header.var_count as usize, 0);
         i
     }
 
@@ -80,7 +80,10 @@ impl Interpreter {
                 Instr::NOP => {},
                 Instr::HALT => {
                     println!("HALT issued, stopped execution.");
-                    return;
+                    if (debug) {
+                        debug!("STACK:\n{:?}", self.stack);
+                        debug!("MEMORY:\n{:?}", self.memory);
+                    }
                 },
                 Instr::ICONST => {
                     let b = self.get_next_4_bytes() as i32;

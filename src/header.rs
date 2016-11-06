@@ -7,7 +7,7 @@ const MAGIC_VALUE: u32 = 0x5AB70500;
 #[derive(Default)]
 pub struct RaptorHeader {
     magic: u32,      // Magic number + padding ( 0x5AB70500 )
-    var_count: u32,  // Number of variables
+    pub var_count: u32,  // Number of variables
 }
 
 impl RaptorHeader {
