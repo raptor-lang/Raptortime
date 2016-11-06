@@ -1,25 +1,28 @@
 extern crate argparse;
 extern crate byteorder;
+#[macro_use] extern crate enum_primitive;
+extern crate num;
 
-#[macro_use]
-mod logger;
+#[macro_use] mod logger;
 mod utils;
 mod header;
 mod interpreter;
+mod instructions;
+
 use interpreter::Interpreter;
 
 use argparse::{ArgumentParser, StoreTrue, Store, Print};
 
 pub static ACCEPTABLE_EXTENSIONS: [&'static str; 2] = ["crap", "crapt"];
 
-struct Options {
+pub struct Options {
     debug: bool,
     input: String,
 }
 
 fn main() {
     let mut options = Options {
-        debug: false,
+        debug: true,
         input: String::new(),
     };
 
@@ -42,12 +45,14 @@ fn main() {
         if utils::should_open(&options.input) {
             let data = utils::try_open_file(&options.input, options.debug);
             let mut interpreter = Interpreter::new(data);
-            interpreter.run();
+            interpreter.run(&options);
+
         } else {
-            panic!("Invalid input file extension. Accepted formats are .crapt and .crap");
+            warn!("Invalid input file extension. Accepted formats are .crapt and .crap");
+            return;
         }
     } else {
-        println!("No input file given. Use -h or --help for help.");
+        warn!("No input file given. Use -h or --help for help.");
         return;
     }
 
