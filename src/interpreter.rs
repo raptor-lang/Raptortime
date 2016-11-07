@@ -133,18 +133,9 @@ impl Interpreter {
                     let a = pop!(); let b = pop!();
                     push!(if a > b {1} else if a < b {-1} else {0});
                 },
-                Instr::COMP_LT => {
-                    let a = pop!(); let b = pop!();
-                    push!(if a < b {1} else {0});
-                },
-                Instr::COMP_EQ => {
-                    let a = pop!(); let b = pop!();
-                    push!(if a == b {1} else {0});
-                },
-                Instr::COMP_GT => {
-                    let a = pop!(); let b = pop!();
-                    push!(if a > b {1} else {0});
-                },
+                Instr::COMP_LT => {push!(if pop!() < pop!() {1} else {0});},
+                Instr::COMP_EQ => {push!(if pop!() == pop!() {1} else {0});},
+                Instr::COMP_GT => {push!(if pop!() > pop!() {1} else {0});},
                 Instr::RELJUMP => {reljump!();},
                 Instr::RELJUMP_GT => {reljump!(gt);},
                 Instr::RELJUMP_LT => {reljump!(lt);},
