@@ -22,7 +22,7 @@ impl fmt::Debug for ConstTable {
 }
 
 
-pub fn read_const_table(mut data: &[u8]) -> ConstTable {
+pub fn read_const_table(data: &[u8]) -> ConstTable {
 
     let mut bc_counter = 0;
     let mut const_table: ConstTable = Default::default();
@@ -53,15 +53,17 @@ pub fn read_const_table(mut data: &[u8]) -> ConstTable {
 
         match instr {
             ConstInstr::FUNC => {
-                let id = get_next_4_bytes!(); let arg_count = get_next_4_bytes!(); let local_count = get_next_4_bytes!();
-                let length = get_next_4_bytes!();
-                const_table.funcs[id] = FuncConst {
-                    arg_count: arg_count,
-                    local_count: local_count,
-                    body: data[bc_counter..(bc_counter+length as usize)]
-                }
+                const_table.funcs[get_next_4_bytes!() as usize] = FuncConst {
+                    arg_count: get_next_4_bytes!(),
+                    local_count: get_next_4_bytes!(),
+                    body: data[bc_counter..(bc_counter+get_next_4_bytes!() as usize)].to_vec()
+                };
+                debug!("Added a function to the constants table")
             },
-            ConstInstr::END => {}
+            ConstInstr::END => {
+                debug!("Reached end of constants table");
+                break;
+            }
         }
     }
     const_table
