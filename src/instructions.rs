@@ -27,6 +27,8 @@ pub enum Instruction {
     RELJUMP_EQ = 0x2D,
     STORE = 0x80,
     LOAD = 0x81,
+    CALL = 0x90,
+    RETURN = 0x91,
     PRINT = 0xA0,
     DUMP_STACK = 0xFA,
     DUMP_GLOBALS = 0xFB,

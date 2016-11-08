@@ -1,4 +1,5 @@
 use header::*;
+use constants::*;
 use instructions::Instruction as Instr;
 use num::FromPrimitive;
 
@@ -7,8 +8,9 @@ pub struct Interpreter {
     // File data
     header: RaptorHeader,
     bytecode: Vec<u8>,
-    
-    // Runtime stuff
+    const_table: ConstTable,
+
+    // Rutime stuff
     stack: Vec<i32>,
     memory: Vec<i32>,
     program_counter: usize,
@@ -18,6 +20,7 @@ impl Interpreter {
     pub fn new(mut data: Vec<u8>) -> Interpreter {
         let mut i = Interpreter {
             header: read_header(&data),
+            const_table: read_const_table(&data),
             bytecode: data.drain(HEADER_SIZE..).collect(),
             stack: Vec::new(),
             memory: Vec::new(),
@@ -58,12 +61,12 @@ impl Interpreter {
 
             macro_rules! push {
                 ( $x:expr ) => {
-                    (self.stack.push($x));
+                    self.stack.push($x);
                 };
             }
             macro_rules! pop {
                 () => {
-                    (self.stack.pop());
+                    self.stack.pop();
                 };
             }
             macro_rules! operation {
@@ -133,9 +136,18 @@ impl Interpreter {
                     let a = pop!(); let b = pop!();
                     push!(if a > b {1} else if a < b {-1} else {0});
                 },
-                Instr::COMP_LT => {push!(if pop!() < pop!() {1} else {0});},
-                Instr::COMP_EQ => {push!(if pop!() == pop!() {1} else {0});},
-                Instr::COMP_GT => {push!(if pop!() > pop!() {1} else {0});},
+                Instr::COMP_LT => {
+                    let a = pop!(); let b = pop!();
+                    push!(if a < b {1} else {0});
+                },
+                Instr::COMP_EQ => {
+                    let a = pop!(); let b = pop!();
+                    push!(if a == b {1} else {0});
+                },
+                Instr::COMP_GT => {
+                    let a = pop!(); let b = pop!();
+                    push!(if a > b {1} else {0});
+                },
                 Instr::RELJUMP => {reljump!();},
                 Instr::RELJUMP_GT => {reljump!(gt);},
                 Instr::RELJUMP_LT => {reljump!(lt);},
@@ -148,6 +160,8 @@ impl Interpreter {
                     let index = self.get_next_4_bytes() as usize;
                     push!(self.memory[index]);
                 },
+                Instr::CALL => {},
+                Instr::RETURN => {}
                 Instr::PRINT => {
                     println!("PRINT: {}", pop!().unwrap());
                 },

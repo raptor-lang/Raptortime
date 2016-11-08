@@ -6,6 +6,7 @@ extern crate num;
 #[macro_use] mod logger;
 mod utils;
 mod header;
+mod constants;
 mod interpreter;
 mod instructions;
 
