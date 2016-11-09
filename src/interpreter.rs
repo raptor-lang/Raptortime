@@ -24,18 +24,17 @@ impl Runtime {
         let debug = options.debug;
 
         loop {
-            let res = self.dispatch_frame(debug);
-            match res {
-                None => {},
-                Some(frm) => {self.call_stack.push(frm);},
+            // Need to wrap this here to limit the scope of last_frame borrow
+            let dispatch_result = {
+                let ln = self.call_stack.len();
+                let mut last_frame = &mut self.call_stack[ln-1];
+                last_frame.dispatch(&mut self.interpreter, debug)
+            };
+            // Push the new StackFrame, if CALL was issued
+            if let Some(frm) = dispatch_result {
+                self.call_stack.push(frm);
             }
         }
-    }
-
-    fn dispatch_frame(&mut self, debug: bool) -> Option<StackFrame> {
-        let ln = self.call_stack.len();
-        let mut last_frame = &mut self.call_stack[ln-1];
-        return last_frame.dispatch(&mut self.interpreter, debug);
     }
 }
 
