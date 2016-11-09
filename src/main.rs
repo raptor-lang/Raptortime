@@ -16,6 +16,7 @@ use argparse::{ArgumentParser, StoreTrue, Store, Print};
 
 pub static ACCEPTABLE_EXTENSIONS: [&'static str; 2] = ["crap", "crapt"];
 
+#[derive(Default, Debug)]
 pub struct Options {
     debug: bool,
     input: String,
@@ -45,8 +46,8 @@ fn main() {
     if !options.input.is_empty() {
         if utils::should_open(&options.input) {
             let data = utils::try_open_file(&options.input, options.debug);
-            let mut runtime = Runtime::new(data);
-            runtime.run(&options);
+            let mut runtime = Runtime::new(data, options);
+            runtime.run();
 
         } else {
             warn!("Invalid input file extension. Accepted formats are .crapt and .crap");

@@ -8,20 +8,22 @@ use std::fmt;
 pub struct Runtime {
     interpreter: Interpreter,
     call_stack: Vec<StackFrame>,
+    options: ::Options,
 }
 
 impl Runtime {
-    pub fn new(mut data: Vec<u8>) -> Runtime {
+    pub fn new(mut data: Vec<u8>, options: ::Options) -> Runtime {
         let mut r = Runtime {
-            interpreter: Interpreter::new(data),
+            interpreter: Interpreter::new(data, options.debug),
             call_stack: Vec::new(),
+            options: options,
         };
         r
     }
-    pub fn run(&mut self, options: &::Options) {
+    pub fn run(&mut self) {
         debug!("Running...");
 
-        let debug = options.debug;
+        let debug = self.options.debug;
 
         loop {
             // Need to wrap this here to limit the scope of last_frame borrow
@@ -61,13 +63,15 @@ pub struct StackFrame {
 }
 
 impl Interpreter {
-    pub fn new(mut data: Vec<u8>) -> Interpreter {
-        debug!("Bytecode length: {} bytes", data.len());
+    pub fn new(mut data: Vec<u8>, debug: bool) -> Interpreter {
+        if debug {debug!("Bytecode length: {} bytes", data.len());}
         let header = read_header(&data);
         data.drain(..HEADER_SIZE);
         let const_table: ConstTable = read_const_table(data.as_slice());
-        debug!("Constant table length: {} bytes", const_table.bc_counter);
-        debug!("Bytecode length: {} bytes", data.len());
+        if debug {
+            debug!("Constant table length: {} bytes", const_table.bc_counter);
+            debug!("Bytecode length: {} bytes", data.len());
+        }
         data.drain(..const_table.bc_counter);
         let sf = StackFrame {
             bytecode: data,
