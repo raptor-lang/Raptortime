@@ -16,6 +16,8 @@ impl Runtime {
             interpreter: Interpreter::new(data),
             call_stack: Vec::new(),
         };
+        let prog_bc = r.interpreter.prog_bytecode.clone();
+        r.call_stack.push(StackFrame {bytecode: prog_bc, ..Default::default()});
         r
     }
     pub fn run(&mut self, options: &::Options) {
@@ -23,10 +25,10 @@ impl Runtime {
 
         let debug = options.debug;
 
-        loop {
+        while self.call_stack.len() > 0 {
             let res = self.dispatch_frame(debug);
             match res {
-                None => {},
+                None => {self.call_stack.pop();},
                 Some(frm) => {self.call_stack.push(frm);},
             }
         }
@@ -48,6 +50,7 @@ pub struct Interpreter {
     // Rutime stuff
     op_stack: Vec<i32>,
     memory: Vec<i32>,
+    prog_bytecode: Vec<u8>,
 }
 
 // Should this be here?
@@ -70,15 +73,12 @@ impl Interpreter {
         debug!("Constant table length: {} bytes", const_table.bc_counter);
         debug!("Bytecode length: {} bytes", data.len());
         data.drain(..const_table.bc_counter);
-        let sf = StackFrame {
-            bytecode: data,
-            ..Default::default()
-        };
         let mut i = Interpreter {
             header: header,
             const_table: const_table,
             op_stack: Vec::new(),
             memory: Vec::new(),
+            prog_bytecode: data,
         };
         i.memory.resize(i.header.var_count as usize, 0);
         i
@@ -171,6 +171,7 @@ impl StackFrame {
                     let func_const = &inpr.const_table.funcs[$id as usize];
                     let mut sf = StackFrame {
                         locals: Vec::new(),
+                        bytecode: func_const.body.clone(),
                         ..Default::default()
                     };
                     for _ in 0..func_const.arg_count {
@@ -242,11 +243,13 @@ impl StackFrame {
                 },
                 Instr::CALL => {
                     let id: u32 = self.get_next_4_bytes();
-                    push_frame!(id);
+                    return push_frame!(id);
                 },
                 Instr::RETURN => {
-                    let val = pop!();
-                    inpr.op_stack.resize(self.return_addr, 0)
+                    let val = pop!().unwrap();
+                    inpr.op_stack.resize(self.return_addr + 1, 0);
+                    push!(val);
+                    return None;
                 }
                 Instr::PRINT => {
                     println!("PRINT: {}", pop!().unwrap());
