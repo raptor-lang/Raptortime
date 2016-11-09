@@ -2,6 +2,7 @@ use header::*;
 use constants::*;
 use instructions::Instruction as Instr;
 use num::FromPrimitive;
+use std::fmt;
 
 #[derive(Debug, Default)]
 pub struct Interpreter {
@@ -18,6 +19,7 @@ pub struct Interpreter {
 }
 
 // Should this be here?
+
 #[derive(Debug, Default)]
 pub struct StackFrame {
     id: u32,
@@ -28,13 +30,17 @@ pub struct StackFrame {
 
 impl Interpreter {
     pub fn new(mut data: Vec<u8>) -> Interpreter {
+        debug!("Bytecode length: {} bytes", data.len());
         let header = read_header(&data);
-        let const_table: ConstTable = read_const_table(data.drain(HEADER_SIZE..).collect::<Vec<u8>>().as_slice());
-        let bytecode = data.drain(const_table.bc_counter..).collect();
+        data.drain(..HEADER_SIZE);
+        let const_table: ConstTable = read_const_table(data.as_slice());
+        debug!("Constant table length: {} bytes", const_table.bc_counter);
+        debug!("Bytecode length: {} bytes", data.len());
+        data.drain(..const_table.bc_counter);
         let mut i = Interpreter {
             header: header,
             const_table: const_table,
-            bytecode: bytecode,
+            bytecode: data,
             op_stack: Vec::new(),
             memory: Vec::new(),
             program_counter: 0,
@@ -129,8 +135,10 @@ impl Interpreter {
                     for _ in 0..func_const.arg_count {
                         sf.locals.push(pop!().unwrap());
                     }
-                    sf.return_addr = self.program_counter;
+                    sf.return_addr = self.op_stack.len();
                     sf.locals.resize((func_const.arg_count + func_const.local_count) as usize, 0);
+                    debug!("Pushed new frame: {}    {:?}", $id, sf);
+                    debug!("Op stack: {:?}", self.op_stack);
                     self.call_stack.push(sf);
                 });
             }
