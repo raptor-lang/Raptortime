@@ -10,7 +10,7 @@ mod constants;
 mod interpreter;
 mod instructions;
 
-use interpreter::Interpreter;
+use interpreter::{Runtime, Interpreter};
 
 use argparse::{ArgumentParser, StoreTrue, Store, Print};
 
@@ -45,8 +45,8 @@ fn main() {
     if !options.input.is_empty() {
         if utils::should_open(&options.input) {
             let data = utils::try_open_file(&options.input, options.debug);
-            let mut interpreter = Interpreter::new(data);
-            interpreter.run(&options);
+            let mut runtime = Runtime::new(data);
+            runtime.run(&options);
 
         } else {
             warn!("Invalid input file extension. Accepted formats are .crapt and .crap");

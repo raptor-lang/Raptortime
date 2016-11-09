@@ -5,6 +5,37 @@ use num::FromPrimitive;
 use std::fmt;
 
 #[derive(Debug, Default)]
+pub struct Runtime {                                       
+    interpreter: Interpreter,
+    call_stack: Vec<StackFrame>,
+}
+
+impl Runtime {                                             
+    pub fn new(mut data: Vec<u8>) -> Runtime {             
+        let mut r = Runtime {                              
+            interpreter: Interpreter::new(data),           
+            call_stack: Vec::new(),                        
+        };                                                 
+        r                                                  
+    }                                                      
+    pub fn run(&mut self, options: &::Options) {
+        debug!("Running...");
+
+        let debug = options.debug;
+
+        loop {
+            let ln = self.call_stack.len();
+            let mut last_frame = &mut self.call_stack[ln-1].clone();
+            let res = last_frame.dispatch(&mut self.interpreter, debug);
+            match res {
+                None => {},
+                Some(frm) => {self.call_stack.push(frm);},
+            }
+        }
+    }                                               
+}                                                          
+                                                           
+#[derive(Debug, Default)]                                  
 pub struct Interpreter {
     // File data
     header: RaptorHeader,
@@ -13,12 +44,11 @@ pub struct Interpreter {
     // Rutime stuff
     op_stack: Vec<i32>,
     memory: Vec<i32>,
-    call_stack: Vec<StackFrame>,
 }
 
 // Should this be here?
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct StackFrame {
     locals: Vec<i32>,
     // The index of the first op in the op_stack that should be kept
@@ -45,20 +75,9 @@ impl Interpreter {
             const_table: const_table,
             op_stack: Vec::new(),
             memory: Vec::new(),
-            call_stack: Vec::new(),
         };
         i.memory.resize(i.header.var_count as usize, 0);
         i
-    }
-
-    pub fn run(&mut self, options: &::Options) {
-        debug!("Running...");
-
-        let debug = options.debug;
-
-        loop {
-            self.call_stack.last().unwrap().dispatch(self, debug)
-        }
     }
 }
 
@@ -75,7 +94,7 @@ impl StackFrame {
     }
 
 
-    fn dispatch(&mut self, mut inpr: Interpreter, debug: bool) {
+    fn dispatch(&mut self, inpr: &mut Interpreter, debug: bool) -> Option<StackFrame> {
         use std::ops::*;
         use std::cmp::*;
 
@@ -157,7 +176,7 @@ impl StackFrame {
                     sf.locals.resize((func_const.arg_count + func_const.local_count) as usize, 0);
                     debug!("Pushed new frame: {}    {:?}", $id, sf);
                     debug!("Op stack: {:?}", inpr.op_stack);
-                    inpr.call_stack.push(sf);
+                    return Some(sf);
                 });
             }
             // TODO: More macros, less code
@@ -232,6 +251,7 @@ impl StackFrame {
                     println!("{:?}", inpr.memory);},
             }
         }
+        return None;    // No need to push a new frame (CALL wasn't used)
     }
 }
 
