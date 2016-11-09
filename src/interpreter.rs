@@ -8,24 +8,23 @@ use std::fmt;
 pub struct Interpreter {
     // File data
     header: RaptorHeader,
-    bytecode: Vec<u8>,
     const_table: ConstTable,
 
     // Rutime stuff
     op_stack: Vec<i32>,
     memory: Vec<i32>,
-    program_counter: usize,
-    call_stack: Vec<StackFrame>
+    call_stack: Vec<StackFrame>,
 }
 
 // Should this be here?
 
 #[derive(Debug, Default)]
 pub struct StackFrame {
-    id: u32,
     locals: Vec<i32>,
     // The index of the first op in the op_stack that should be kept
-    return_addr: usize
+    return_addr: usize,
+    bytecode: Vec<u8>,
+    bc_counter: usize
 }
 
 impl Interpreter {
@@ -37,62 +36,82 @@ impl Interpreter {
         debug!("Constant table length: {} bytes", const_table.bc_counter);
         debug!("Bytecode length: {} bytes", data.len());
         data.drain(..const_table.bc_counter);
+        let sf = StackFrame {
+            bytecode: data,
+            ..Default::default()
+        };
         let mut i = Interpreter {
             header: header,
             const_table: const_table,
-            bytecode: data,
             op_stack: Vec::new(),
             memory: Vec::new(),
-            program_counter: 0,
-            call_stack: Vec::new()
+            call_stack: Vec::new(),
         };
         i.memory.resize(i.header.var_count as usize, 0);
         i
     }
 
     pub fn run(&mut self, options: &::Options) {
+        debug!("Running...");
+
+        let debug = options.debug;
+
+        loop {
+            self.call_stack.last().unwrap().dispatch(self, debug)
+        }
+    }
+}
+
+impl StackFrame {
+
+    fn get_next_4_bytes(&mut self) -> u32 {
+        let val = (self.bytecode[self.bc_counter] as u32) << 24 |
+        (self.bytecode[self.bc_counter + 1] as u32) << 16 |
+        (self.bytecode[self.bc_counter + 2] as u32) << 8 |
+        (self.bytecode[self.bc_counter + 3] as u32);
+        self.bc_counter += 4;
+        debug!("get_next_4_bytes: 0x{:04X}", val);
+        val
+    }
+
+
+    fn dispatch(&mut self, mut inpr: Interpreter, debug: bool) {
         use std::ops::*;
         use std::cmp::*;
 
-        debug!("Running...");
-        debug!("Bytecode: {:?}", self.bytecode);
-
-        let debug = options.debug;
-        
         // Main loop
-        // Will break when .next() is None
-        while self.program_counter != self.bytecode.len() {
-            // info!("PC: {}", program_counter);
+        while self.bc_counter != self.bytecode.len() {
+            // info!("PC: {}", bc_counter);
 
             // Use FromPrimitive trait to convert a value to its enum
-            let instr = Instr::from_u8(self.bytecode[self.program_counter]);
-            self.program_counter += 1;
+            let instr = Instr::from_u8(self.bytecode[self.bc_counter]);
+            self.bc_counter += 1;
 
             if instr.is_none() {
-                warn!("Unimplemented instruction: {:04X}", self.bytecode[self.program_counter]);
+                warn!("Unimplemented instruction: {:04X}", self.bytecode[self.bc_counter]);
                 continue;
             }
 
             let instr = instr.unwrap();   // We're sure it's Some here, so unpack it.
 
-            if options.debug {
+            if debug {
                 debug!("{:?}", instr);
             }
 
             macro_rules! push {
                 ( $x:expr ) => {
-                    self.op_stack.push($x);
+                    inpr.op_stack.push($x);
                 };
             }
             macro_rules! pop {
                 () => {
-                    self.op_stack.pop();
+                    inpr.op_stack.pop();
                 };
             }
             macro_rules! operation {
                 ($op:ident) => ({
-                    let final_length: usize = self.op_stack.len().saturating_sub(2);
-                    let val = self.op_stack.drain(final_length..).fold(
+                    let final_length: usize = inpr.op_stack.len().saturating_sub(2);
+                    let val = inpr.op_stack.drain(final_length..).fold(
                         0, |acc, x| acc.$op(x)
                     );
                     push!(val);
@@ -113,11 +132,11 @@ impl Interpreter {
                     // Need this if because you can't have negative usizes
                     if offset > 0 {
                         if debug {debug!("RELJUMP: {}", offset);}
-                        self.program_counter += offset as usize;
+                        self.bc_counter += offset as usize;
                         if offset == 1 {debug!("RELJUMP 1 is redundant. This is a compiler bug")}
                     } else if offset < 0 {
                         if debug {debug!("RELJUMP: {}", offset);}
-                        self.program_counter -= (-offset) as usize;
+                        self.bc_counter -= (-offset) as usize;
                     } else {
                         warn!("Invalid reljump offset: 0");
                     }
@@ -126,20 +145,19 @@ impl Interpreter {
 
             macro_rules! push_frame {
                 ($id:expr) => ({
-                    let func_const = &self.const_table.funcs[$id as usize];
+                    let func_const = &inpr.const_table.funcs[$id as usize];
                     let mut sf = StackFrame {
-                        id: $id,
                         locals: Vec::new(),
-                        return_addr: 0
+                        ..Default::default()
                     };
                     for _ in 0..func_const.arg_count {
                         sf.locals.push(pop!().unwrap());
                     }
-                    sf.return_addr = self.op_stack.len();
+                    sf.return_addr = inpr.op_stack.len();
                     sf.locals.resize((func_const.arg_count + func_const.local_count) as usize, 0);
                     debug!("Pushed new frame: {}    {:?}", $id, sf);
-                    debug!("Op stack: {:?}", self.op_stack);
-                    self.call_stack.push(sf);
+                    debug!("Op stack: {:?}", inpr.op_stack);
+                    inpr.call_stack.push(sf);
                 });
             }
             // TODO: More macros, less code
@@ -149,8 +167,8 @@ impl Interpreter {
                 Instr::HALT => {
                     println!("HALT issued, stopped execution.");
                     if debug {
-                        debug!("Stack: {:?}", self.op_stack);
-                        debug!("Memory: {:?}", self.memory);
+                        debug!("Stack: {:?}", inpr.op_stack);
+                        debug!("Memory: {:?}", inpr.memory);
                     }
                 },
                 Instr::ICONST => {
@@ -193,11 +211,11 @@ impl Interpreter {
                 Instr::RELJUMP_EQ => {reljump!(eq);},
                 Instr::STORE => {
                     let index = self.get_next_4_bytes() as usize;
-                    self.memory[index] = pop!().unwrap();
+                    self.locals[index] = pop!().unwrap();
                 },
                 Instr::LOAD => {
                     let index = self.get_next_4_bytes() as usize;
-                    push!(self.memory[index]);
+                    push!(self.locals[index]);
                 },
                 Instr::CALL => {
                     let id: u32 = self.get_next_4_bytes();
@@ -208,22 +226,12 @@ impl Interpreter {
                     println!("PRINT: {}", pop!().unwrap());
                 },
                 Instr::DUMP_STACK => {
-                    println!("{:?}", self.op_stack);
+                    println!("{:?}", inpr.op_stack);
                 },
                 Instr::DUMP_GLOBALS => {
-                    println!("{:?}", self.memory);},
+                    println!("{:?}", inpr.memory);},
             }
         }
-    }
-
-    fn get_next_4_bytes(&mut self) -> u32 {
-        let val = (self.bytecode[self.program_counter] as u32) << 24 |
-                  (self.bytecode[self.program_counter + 1] as u32) << 16 |
-                  (self.bytecode[self.program_counter + 2] as u32) << 8 |
-                  (self.bytecode[self.program_counter + 3] as u32);
-        self.program_counter += 4;
-        debug!("get_next_4_bytes: 0x{:04X}", val);
-        val
     }
 }
 
