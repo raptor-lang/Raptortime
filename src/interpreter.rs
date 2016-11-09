@@ -177,12 +177,13 @@ impl StackFrame {
                     }
                     sf.return_addr = inpr.op_stack.len();
                     sf.locals.resize((func_const.arg_count + func_const.local_count) as usize, 0);
-                    debug!("Pushed new frame: {}    {:?}", $id, sf);
-                    debug!("Op stack: {:?}", inpr.op_stack);
+                    if debug {
+                        debug!("Pushed new frame: {}    {:?}", $id, sf);
+                        debug!("Op stack: {:?}", inpr.op_stack);
+                    }
                     return Some(sf);
                 });
             }
-            // TODO: More macros, less code
 
             match instr {
                 Instr::NOP => {},
