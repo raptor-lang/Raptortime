@@ -11,9 +11,19 @@ pub struct Interpreter {
     const_table: ConstTable,
 
     // Rutime stuff
-    stack: Vec<i32>,
+    op_stack: Vec<i32>,
     memory: Vec<i32>,
     program_counter: usize,
+    call_stack: Vec<StackFrame>
+}
+
+// Should this be here?
+#[derive(Debug, Default)]
+pub struct StackFrame {
+    id: u32,
+    locals: Vec<i32>,
+    // The index of the first op in the op_stack that should be kept
+    return_addr: usize
 }
 
 impl Interpreter {
@@ -25,9 +35,10 @@ impl Interpreter {
             header: header,
             const_table: const_table,
             bytecode: bytecode,
-            stack: Vec::new(),
+            op_stack: Vec::new(),
             memory: Vec::new(),
             program_counter: 0,
+            call_stack: Vec::new()
         };
         i.memory.resize(i.header.var_count as usize, 0);
         i
@@ -64,18 +75,18 @@ impl Interpreter {
 
             macro_rules! push {
                 ( $x:expr ) => {
-                    self.stack.push($x);
+                    self.op_stack.push($x);
                 };
             }
             macro_rules! pop {
                 () => {
-                    self.stack.pop();
+                    self.op_stack.pop();
                 };
             }
             macro_rules! operation {
                 ($op:ident) => ({
-                    let final_length: usize = self.stack.len().saturating_sub(2);
-                    let val = self.stack.drain(final_length..).fold(
+                    let final_length: usize = self.op_stack.len().saturating_sub(2);
+                    let val = self.op_stack.drain(final_length..).fold(
                         0, |acc, x| acc.$op(x)
                     );
                     push!(val);
@@ -106,6 +117,23 @@ impl Interpreter {
                     }
                 });
             }
+
+            macro_rules! push_frame {
+                ($id:expr) => ({
+                    let func_const = &self.const_table.funcs[$id as usize];
+                    let mut sf = StackFrame {
+                        id: $id,
+                        locals: Vec::new(),
+                        return_addr: 0
+                    };
+                    for _ in 0..func_const.arg_count {
+                        sf.locals.push(pop!().unwrap());
+                    }
+                    sf.return_addr = self.program_counter;
+                    sf.locals.resize((func_const.arg_count + func_const.local_count) as usize, 0);
+                    self.call_stack.push(sf);
+                });
+            }
             // TODO: More macros, less code
 
             match instr {
@@ -113,7 +141,7 @@ impl Interpreter {
                 Instr::HALT => {
                     println!("HALT issued, stopped execution.");
                     if debug {
-                        debug!("Stack: {:?}", self.stack);
+                        debug!("Stack: {:?}", self.op_stack);
                         debug!("Memory: {:?}", self.memory);
                     }
                 },
@@ -163,13 +191,16 @@ impl Interpreter {
                     let index = self.get_next_4_bytes() as usize;
                     push!(self.memory[index]);
                 },
-                Instr::CALL => {},
+                Instr::CALL => {
+                    let id: u32 = self.get_next_4_bytes();
+                    push_frame!(id);
+                },
                 Instr::RETURN => {}
                 Instr::PRINT => {
                     println!("PRINT: {}", pop!().unwrap());
                 },
                 Instr::DUMP_STACK => {
-                    println!("{:?}", self.stack);
+                    println!("{:?}", self.op_stack);
                 },
                 Instr::DUMP_GLOBALS => {
                     println!("{:?}", self.memory);},

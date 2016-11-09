@@ -3,9 +3,9 @@ use num::FromPrimitive;
 
 #[derive(Debug)]
 pub struct FuncConst {
-    arg_count: u32,
-    local_count: u32,
-    body: Vec<u8>
+    pub arg_count: u32,
+    pub local_count: u32,
+    pub body: Vec<u8>
 }
 
 #[derive(Default)]
@@ -41,10 +41,10 @@ pub fn read_const_table(data: &[u8]) -> ConstTable {
     while const_table.bc_counter != data.len() {
 
         let instr = ConstInstr::from_u8(data[const_table.bc_counter]);
-        const_table.bc_counter += 1;
 
+        const_table.bc_counter += 1;
         if instr.is_none() {
-            warn!("Unimplemented constants table instruction: {:04X}", data[const_table.bc_counter]);
+            warn!("Unimplemented constants table instruction: {:04X}", data[const_table.bc_counter - 1]);
             continue;
         }
 
@@ -52,12 +52,15 @@ pub fn read_const_table(data: &[u8]) -> ConstTable {
 
         match instr {
             ConstInstr::FUNC => {
-                const_table.funcs[get_next_4_bytes!() as usize] = FuncConst {
+                // TODO: remove this on the compiler end
+                get_next_4_bytes!();
+                // TODO: Im so sorry, this is terrible
+                const_table.funcs.push(FuncConst {
                     arg_count: get_next_4_bytes!(),
                     local_count: get_next_4_bytes!(),
-                    body: data[const_table.bc_counter..(const_table.bc_counter+get_next_4_bytes!() as usize)].to_vec()
-                };
-                debug!("Added a function to the constants table")
+                    body: data[const_table.bc_counter..{const_table.bc_counter += get_next_4_bytes!() as usize; const_table.bc_counter}].to_vec()
+                });
+                debug!("Added a function to the constants table");
             },
             ConstInstr::END => {
                 debug!("Reached end of constants table");
