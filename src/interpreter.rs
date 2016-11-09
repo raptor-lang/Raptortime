@@ -18,10 +18,13 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new(mut data: Vec<u8>) -> Interpreter {
+        let header = read_header(&data);
+        let const_table: ConstTable = read_const_table(data.drain(HEADER_SIZE..).collect::<Vec<u8>>().as_slice());
+        let bytecode = data.drain(const_table.bc_counter..).collect();
         let mut i = Interpreter {
-            header: read_header(&data),
-            const_table: read_const_table(&data),
-            bytecode: data.drain(HEADER_SIZE..).collect(),
+            header: header,
+            const_table: const_table,
+            bytecode: bytecode,
             stack: Vec::new(),
             memory: Vec::new(),
             program_counter: 0,
