@@ -5,37 +5,41 @@ use num::FromPrimitive;
 use std::fmt;
 
 #[derive(Debug, Default)]
-pub struct Runtime {                                       
+pub struct Runtime {
     interpreter: Interpreter,
     call_stack: Vec<StackFrame>,
 }
 
-impl Runtime {                                             
-    pub fn new(mut data: Vec<u8>) -> Runtime {             
-        let mut r = Runtime {                              
-            interpreter: Interpreter::new(data),           
-            call_stack: Vec::new(),                        
-        };                                                 
-        r                                                  
-    }                                                      
+impl Runtime {
+    pub fn new(mut data: Vec<u8>) -> Runtime {
+        let mut r = Runtime {
+            interpreter: Interpreter::new(data),
+            call_stack: Vec::new(),
+        };
+        r
+    }
     pub fn run(&mut self, options: &::Options) {
         debug!("Running...");
 
         let debug = options.debug;
 
         loop {
-            let ln = self.call_stack.len();
-            let mut last_frame = &mut self.call_stack[ln-1].clone();
-            let res = last_frame.dispatch(&mut self.interpreter, debug);
+            let res = self.dispatch_frame(debug);
             match res {
                 None => {},
                 Some(frm) => {self.call_stack.push(frm);},
             }
         }
-    }                                               
-}                                                          
-                                                           
-#[derive(Debug, Default)]                                  
+    }
+
+    fn dispatch_frame(&mut self, debug: bool) -> Option<StackFrame> {
+        let ln = self.call_stack.len();
+        let mut last_frame = &mut self.call_stack[ln-1];
+        return last_frame.dispatch(&mut self.interpreter, debug);
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Interpreter {
     // File data
     header: RaptorHeader,
@@ -240,7 +244,10 @@ impl StackFrame {
                     let id: u32 = self.get_next_4_bytes();
                     push_frame!(id);
                 },
-                Instr::RETURN => {}
+                Instr::RETURN => {
+                    let val = pop!();
+                    inpr.op_stack.resize(self.return_addr, 0)
+                }
                 Instr::PRINT => {
                     println!("PRINT: {}", pop!().unwrap());
                 },
@@ -251,7 +258,7 @@ impl StackFrame {
                     println!("{:?}", inpr.memory);},
             }
         }
-        return None;    // No need to push a new frame (CALL wasn't used)
+        return None;    // Pop the current frame
     }
 }
 
