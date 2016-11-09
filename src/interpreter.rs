@@ -8,36 +8,37 @@ use std::fmt;
 pub struct Runtime {
     interpreter: Interpreter,
     call_stack: Vec<StackFrame>,
+    options: ::Options,
 }
 
 impl Runtime {
-    pub fn new(mut data: Vec<u8>) -> Runtime {
+    pub fn new(mut data: Vec<u8>, options: ::Options) -> Runtime {
         let mut r = Runtime {
-            interpreter: Interpreter::new(data),
+            interpreter: Interpreter::new(data, options.debug),
             call_stack: Vec::new(),
+            options: options,
         };
         let prog_bc = r.interpreter.prog_bytecode.clone();
         r.call_stack.push(StackFrame {bytecode: prog_bc, ..Default::default()});
         r
     }
-    pub fn run(&mut self, options: &::Options) {
+    pub fn run(&mut self) {
         debug!("Running...");
 
-        let debug = options.debug;
+        let debug = self.options.debug;
 
         while self.call_stack.len() > 0 {
-            let res = self.dispatch_frame(debug);
-            match res {
+            let dispatch_result = {
+                let ln = self.call_stack.len();
+                let mut last_frame = &mut self.call_stack[ln-1];
+                last_frame.dispatch(&mut self.interpreter, debug)
+            };
+            // Push the new StackFrame, if CALL was issued
+            match dispatch_result {
                 None => {self.call_stack.pop();},
                 Some(frm) => {self.call_stack.push(frm);},
             }
         }
-    }
-
-    fn dispatch_frame(&mut self, debug: bool) -> Option<StackFrame> {
-        let ln = self.call_stack.len();
-        let mut last_frame = &mut self.call_stack[ln-1];
-        return last_frame.dispatch(&mut self.interpreter, debug);
     }
 }
 
@@ -65,13 +66,15 @@ pub struct StackFrame {
 }
 
 impl Interpreter {
-    pub fn new(mut data: Vec<u8>) -> Interpreter {
-        debug!("Bytecode length: {} bytes", data.len());
+    pub fn new(mut data: Vec<u8>, debug: bool) -> Interpreter {
+        if debug {debug!("Bytecode length: {} bytes", data.len());}
         let header = read_header(&data);
         data.drain(..HEADER_SIZE);
         let const_table: ConstTable = read_const_table(data.as_slice());
-        debug!("Constant table length: {} bytes", const_table.bc_counter);
-        debug!("Bytecode length: {} bytes", data.len());
+        if debug {
+            debug!("Constant table length: {} bytes", const_table.bc_counter);
+            debug!("Bytecode length: {} bytes", data.len());
+        }
         data.drain(..const_table.bc_counter);
         let mut i = Interpreter {
             header: header,
@@ -179,12 +182,13 @@ impl StackFrame {
                     }
                     sf.return_addr = inpr.op_stack.len();
                     sf.locals.resize((func_const.arg_count + func_const.local_count) as usize, 0);
-                    debug!("Pushed new frame: {}    {:?}", $id, sf);
-                    debug!("Op stack: {:?}", inpr.op_stack);
+                    if debug {
+                        debug!("Pushed new frame: {}    {:?}", $id, sf);
+                        debug!("Op stack: {:?}", inpr.op_stack);
+                    }
                     return Some(sf);
                 });
             }
-            // TODO: More macros, less code
 
             match instr {
                 Instr::NOP => {},
