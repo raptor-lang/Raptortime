@@ -35,7 +35,11 @@ impl Runtime {
             };
             // Push the new StackFrame, if CALL was issued
             match dispatch_result {
-                None => {self.call_stack.pop();},
+                None => {
+                    debug!("Popped a frame. Current frame: {:?}", self.call_stack[self.call_stack.len()-1]);
+                    debug!("Op stack: {:?}", self.interpreter.op_stack);
+                    self.call_stack.pop();
+                },
                 Some(frm) => {self.call_stack.push(frm);},
             }
         }
@@ -58,6 +62,7 @@ pub struct Interpreter {
 
 #[derive(Debug, Default, Clone)]
 pub struct StackFrame {
+    id: u32,
     locals: Vec<i32>,
     // The index of the first op in the op_stack that should be kept
     return_addr: usize,
@@ -100,7 +105,6 @@ impl StackFrame {
         val
     }
 
-
     fn dispatch(&mut self, inpr: &mut Interpreter, debug: bool) -> Option<StackFrame> {
         use std::ops::*;
         use std::cmp::*;
@@ -136,11 +140,11 @@ impl StackFrame {
             }
             macro_rules! operation {
                 ($op:ident) => ({
-                    let final_length: usize = inpr.op_stack.len().saturating_sub(2);
-                    let val = inpr.op_stack.drain(final_length..).fold(
-                        0, |acc, x| acc.$op(x)
-                    );
+                    let l = pop!().unwrap();
+                    let r = pop!().unwrap();
+                    let val = l.$op(r);
                     push!(val);
+                    debug!("Operation: {:?}. Operands: [{}, {}]. Result: {}.", instr, l, r, val);
                 })
             }
             macro_rules! reljump {
@@ -173,6 +177,7 @@ impl StackFrame {
                 ($id:expr) => ({
                     let func_const = &inpr.const_table.funcs[$id as usize];
                     let mut sf = StackFrame {
+                        id: $id,
                         locals: Vec::new(),
                         bytecode: func_const.body.clone(),
                         ..Default::default()
@@ -183,7 +188,7 @@ impl StackFrame {
                     sf.return_addr = inpr.op_stack.len();
                     sf.locals.resize((func_const.arg_count + func_const.local_count) as usize, 0);
                     if debug {
-                        debug!("Pushed new frame: {}    {:?}", $id, sf);
+                        debug!("Pushed new frame: {:?}", sf);
                         debug!("Op stack: {:?}", inpr.op_stack);
                     }
                     return Some(sf);
@@ -239,19 +244,26 @@ impl StackFrame {
                 Instr::RELJUMP_EQ => {reljump!(eq);},
                 Instr::STORE => {
                     let index = self.get_next_4_bytes() as usize;
-                    self.locals[index] = pop!().unwrap();
+                    let val = pop!().unwrap();
+                    self.locals[index] = val;
+                    debug!("Stored {} into local {}", val, index)
                 },
                 Instr::LOAD => {
                     let index = self.get_next_4_bytes() as usize;
-                    push!(self.locals[index]);
+                    let val = self.locals[index];
+                    push!(val);
+                    debug!("Loaded {} from local {}", val, index);
+                    debug!("Op stack: {:?}", inpr.op_stack)
                 },
                 Instr::CALL => {
                     let id: u32 = self.get_next_4_bytes();
+                    debug!("Calling func {}", self.id);
                     return push_frame!(id);
                 },
                 Instr::RETURN => {
                     let val = pop!().unwrap();
-                    inpr.op_stack.resize(self.return_addr + 1, 0);
+                    inpr.op_stack.resize(self.return_addr, 0);
+                    debug!("Returning {} from func {}", val, self.id);
                     push!(val);
                     return None;
                 }
@@ -267,6 +279,7 @@ impl StackFrame {
         }
         return None;    // Pop the current frame
     }
+ 
 }
 
 // TODO: Add tests

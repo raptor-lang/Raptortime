@@ -54,11 +54,13 @@ pub fn read_const_table(data: &[u8]) -> ConstTable {
             ConstInstr::FUNC => {
                 // TODO: remove this on the compiler end
                 get_next_4_bytes!();
-                // TODO: Im so sorry, this is terrible
+                let arg_count = get_next_4_bytes!();
+                let local_count = get_next_4_bytes!();
+                let bc_length = get_next_4_bytes!() as usize;
                 const_table.funcs.push(FuncConst {
-                    arg_count: get_next_4_bytes!(),
-                    local_count: get_next_4_bytes!(),
-                    body: data[const_table.bc_counter..{const_table.bc_counter += (4 + get_next_4_bytes!()) as usize; const_table.bc_counter + 1}].to_vec()
+                    arg_count: arg_count,
+                    local_count: local_count,
+                    body: data[const_table.bc_counter..{const_table.bc_counter += bc_length; const_table.bc_counter + 1}].to_vec()
                 });
                 debug!("Added a function to the constants table");
             },
