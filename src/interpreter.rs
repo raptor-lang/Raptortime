@@ -1,50 +1,9 @@
+use std::fmt;
+use num::FromPrimitive;
+
 use header::*;
 use constants::*;
 use instructions::Instruction as Instr;
-use num::FromPrimitive;
-use std::fmt;
-
-#[derive(Debug, Default)]
-pub struct Runtime {
-    interpreter: Interpreter,
-    call_stack: Vec<StackFrame>,
-    options: ::Options,
-}
-
-impl Runtime {
-    pub fn new(mut data: Vec<u8>, options: ::Options) -> Runtime {
-        let mut r = Runtime {
-            interpreter: Interpreter::new(data, options.debug),
-            call_stack: Vec::new(),
-            options: options,
-        };
-        let prog_bc = r.interpreter.prog_bytecode.clone();
-        r.call_stack.push(StackFrame {bytecode: prog_bc, ..Default::default()});
-        r
-    }
-    pub fn run(&mut self) {
-        debug!("Running...");
-
-        let debug = self.options.debug;
-
-        while self.call_stack.len() > 0 {
-            let dispatch_result = {
-                let ln = self.call_stack.len();
-                let mut last_frame = &mut self.call_stack[ln-1];
-                last_frame.dispatch(&mut self.interpreter, debug)
-            };
-            // Push the new StackFrame, if CALL was issued
-            match dispatch_result {
-                None => {
-                    debug!("Popped a frame. Current frame: {:?}", self.call_stack[self.call_stack.len()-1]);
-                    debug!("Op stack: {:?}", self.interpreter.op_stack);
-                    self.call_stack.pop();
-                },
-                Some(frm) => {self.call_stack.push(frm);},
-            }
-        }
-    }
-}
 
 #[derive(Debug, Default)]
 pub struct Interpreter {
@@ -53,21 +12,21 @@ pub struct Interpreter {
     const_table: ConstTable,
 
     // Rutime stuff
-    op_stack: Vec<i32>,
+    pub op_stack: Vec<i32>,
     memory: Vec<i32>,
-    prog_bytecode: Vec<u8>,
+    pub prog_bytecode: Vec<u8>,
 }
 
-// Should this be here?
-
+// All of the fields beeing pub is not very good
+// Maybe move this in runtime.rs?
 #[derive(Debug, Default, Clone)]
 pub struct StackFrame {
-    id: u32,
-    locals: Vec<i32>,
+    pub id: u32,
+    pub locals: Vec<i32>,
     // The index of the first op in the op_stack that should be kept
-    return_addr: usize,
-    bytecode: Vec<u8>,
-    bc_counter: usize
+    pub return_addr: usize,
+    pub bytecode: Vec<u8>,
+    pub bc_counter: usize
 }
 
 impl Interpreter {
@@ -105,7 +64,7 @@ impl StackFrame {
         val
     }
 
-    fn dispatch(&mut self, inpr: &mut Interpreter, debug: bool) -> Option<StackFrame> {
+    pub fn dispatch(&mut self, inpr: &mut Interpreter, debug: bool) -> Option<StackFrame> {
         use std::ops::*;
         use std::cmp::*;
 

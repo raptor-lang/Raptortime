@@ -39,7 +39,6 @@ pub fn read_const_table(data: &[u8]) -> ConstTable {
     }
 
     while const_table.bc_counter != data.len() {
-
         let instr = ConstInstr::from_u8(data[const_table.bc_counter]);
 
         const_table.bc_counter += 1;

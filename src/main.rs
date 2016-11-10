@@ -6,11 +6,12 @@ extern crate num;
 #[macro_use] mod logger;
 mod utils;
 mod header;
-mod constants;
+mod runtime;
 mod interpreter;
 mod instructions;
+mod constants;
 
-use interpreter::{Runtime, Interpreter};
+use runtime::Runtime;
 
 use argparse::{ArgumentParser, StoreTrue, Store, Print};
 
