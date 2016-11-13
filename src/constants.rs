@@ -4,7 +4,7 @@ use num::FromPrimitive;
 
 #[derive(Debug, Default, Clone)]
 pub struct FuncConst {
-    pub name: &'static str,
+    pub name: String,
     pub arg_count: u32,
     pub local_count: u32,
     pub body: Vec<u8>
@@ -21,6 +21,21 @@ impl fmt::Debug for ConstTable {
         //TODO
         unimplemented!()
     }
+}
+
+// Eats a null byte terminated string
+fn eat_string(data: &[u8], const_table: &mut ConstTable) -> String {
+    use std::ffi::CString;
+
+    let str_start = const_table.bc_counter;
+    let mut str_len: usize = 0;
+    while data[str_start + str_len] != 0x00 {
+        str_len += 1;
+    }
+    let string = CString::new(&data[str_start..(str_start+str_len)]).unwrap();
+    const_table.bc_counter = str_len + 1; // + 1 for null byte
+    debug!("Ate string {:?} of length {}", string, str_len);
+    string.into_string().unwrap()
 }
 
 
@@ -41,20 +56,6 @@ pub fn read_const_table(data: &[u8]) -> ConstTable {
         }}
     }
 
-    // Eats a null byte terminated string
-    // TODO: Velo, take a look at this one, I'm sure it can be improved
-    macro_rules! eat_string {
-        () => {{
-            let mut str_len = const_table.bc_counter;
-            while data[str_len] != 0x00 {
-                str_len += 1;
-            }
-            let string = str::from_utf8(&data[const_table.bc_counter..str_len]);
-            const_table.bc_counter = str_len + 1; // + 1 for null byte
-            string
-        }}
-    }
-
     while const_table.bc_counter != data.len() {
         let instr = ConstInstr::from_u8(data[const_table.bc_counter]);
 
@@ -70,7 +71,9 @@ pub fn read_const_table(data: &[u8]) -> ConstTable {
             ConstInstr::FUNC => {
                 // TODO: use this id
                 let id = get_next_4_bytes!() as usize;
-                let name = eat_string!();
+                let name = eat_string(
+                    &data, &mut const_table
+                );
                 let arg_count = get_next_4_bytes!();
                 let local_count = get_next_4_bytes!();
                 let bc_length = get_next_4_bytes!() as usize;
@@ -79,7 +82,7 @@ pub fn read_const_table(data: &[u8]) -> ConstTable {
                     const_table.funcs.resize(id + 1, FuncConst{..Default::default()})
                 }
                 const_table.funcs.push(FuncConst {
-                    name: name.unwrap(),
+                    name: name,
                     arg_count: arg_count,
                     local_count: local_count,
                     body: body
