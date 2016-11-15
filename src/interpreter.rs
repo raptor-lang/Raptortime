@@ -77,11 +77,13 @@ impl StackFrame {
             self.bc_counter += 1;
 
             if instr.is_none() {
-                warn!("Unimplemented instruction: {:04X}", self.bytecode[self.bc_counter]);
+                warn!("Unimplemented instruction: {:04X}",
+                      self.bytecode[self.bc_counter]);
                 continue;
             }
 
-            let instr = instr.unwrap();   // We're sure it's Some here, so unpack it.
+            // We're sure it's Some here, so unpack it
+            let instr = instr.unwrap();
 
             if debug {
                 debug!("{:?}", instr);
@@ -103,7 +105,8 @@ impl StackFrame {
                     let r = pop!().unwrap();
                     let val = l.$op(r);
                     push!(val);
-                    debug!("Operation: {:?}. Operands: [{}, {}]. Result: {}.", instr, l, r, val);
+                    debug!("Operation: {:?}. Operands: [{}, {}]. Result: {}.",
+                           instr, l, r, val);
                 })
             }
             macro_rules! reljump {
@@ -122,7 +125,9 @@ impl StackFrame {
                     if offset > 0 {
                         if debug {debug!("RELJUMP: {}", offset);}
                         self.bc_counter += offset as usize;
-                        if offset == 1 {debug!("RELJUMP 1 is redundant. This is a compiler bug")}
+                        if offset == 1 {
+                            warn!("RELJUMP 1 is redundant. This is a compiler bug")
+                        }
                     } else if offset < 0 {
                         if debug {debug!("RELJUMP: {}", offset);}
                         self.bc_counter -= (-offset) as usize;
@@ -145,7 +150,8 @@ impl StackFrame {
                         sf.locals.push(pop!().unwrap());
                     }
                     sf.return_addr = inpr.op_stack.len();
-                    sf.locals.resize((func_const.arg_count + func_const.local_count) as usize, 0);
+                    sf.locals.resize(
+                        (func_const.arg_count + func_const.local_count) as usize, 0);
                     if debug {
                         debug!("Pushed new frame: {:?}", sf);
                         debug!("Op stack: {:?}", inpr.op_stack);

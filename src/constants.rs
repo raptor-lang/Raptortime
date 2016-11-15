@@ -63,7 +63,8 @@ pub fn read_const_table(data: &[u8]) -> ConstTable {
 
         const_table.bc_counter += 1;
         if instr.is_none() {
-            warn!("Unimplemented constants table instruction: {:04X}", data[const_table.bc_counter - 1]);
+            warn!("Unimplemented constants table instruction: {:04X}",
+                  data[const_table.bc_counter - 1]);
             continue;
         }
 

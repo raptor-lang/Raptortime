@@ -15,7 +15,11 @@ impl Runtime {
             options: options,
         };
         let prog_bc = r.interpreter.prog_bytecode.clone();
-        r.call_stack.push(StackFrame {bytecode: prog_bc, ..Default::default()});
+        r.call_stack.push(
+            StackFrame {
+                bytecode: prog_bc,
+                ..Default::default()
+            });
         r
     }
     pub fn run(&mut self) {
@@ -32,7 +36,8 @@ impl Runtime {
             // Push the new StackFrame, if CALL was issued
             match dispatch_result {
                 None => {
-                    debug!("Popped a frame. Current frame: {:?}", self.call_stack[self.call_stack.len()-1]);
+                    debug!("Popped a frame. Current frame: {:?}",
+                           self.call_stack[self.call_stack.len()-1]);
                     debug!("Op stack: {:?}", self.interpreter.op_stack);
                     self.call_stack.pop();
                 },
