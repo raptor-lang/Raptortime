@@ -33,27 +33,29 @@ fn eat_string(data: &[u8], const_table: &mut ConstTable) -> String {
         str_len += 1;
     }
     let string = CString::new(&data[str_start..(str_start+str_len)]).unwrap();
-    const_table.bc_counter = str_len + 1; // + 1 for null byte
-    debug!("Ate string {:?} of length {}", string, str_len);
+    const_table.bc_counter += str_len + 1; // + 1 for null byte
+    //debug!("Ate string {:?} of length {}", string, str_len);
     string.into_string().unwrap()
 }
 
+#[inline]
+fn get_next_4_bytes(data: &[u8], const_table: &mut ConstTable) -> u32 {
+
+    let val = (data[const_table.bc_counter] as u32) << 24 |
+        (data[const_table.bc_counter + 1] as u32) << 16 |
+        (data[const_table.bc_counter + 2] as u32) << 8 |
+        (data[const_table.bc_counter + 3] as u32);
+    const_table.bc_counter += 4;
+    debug!("get_next_4_bytes: 0x{:04X}", val);
+    val
+}
 
 pub fn read_const_table(data: &[u8]) -> ConstTable {
 
     let mut const_table: ConstTable = Default::default();
 
-    // TODO: Refactor these macros
     macro_rules! get_next_4_bytes {
-        () => {{
-            let val = (data[const_table.bc_counter] as u32) << 24 |
-            (data[const_table.bc_counter + 1] as u32) << 16 |
-            (data[const_table.bc_counter + 2] as u32) << 8 |
-            (data[const_table.bc_counter + 3] as u32);
-            const_table.bc_counter += 4;
-            debug!("get_next_4_bytes: 0x{:04X}", val);
-            val
-        }}
+        () => (get_next_4_bytes(&data, &mut const_table))
     }
 
     while const_table.bc_counter != data.len() {
@@ -71,23 +73,28 @@ pub fn read_const_table(data: &[u8]) -> ConstTable {
             ConstInstr::FUNC => {
                 // TODO: use this id
                 let id = get_next_4_bytes!() as usize;
-                let name = eat_string(
-                    &data, &mut const_table
-                );
+                let name = eat_string(&data, &mut const_table);
                 let arg_count = get_next_4_bytes!();
                 let local_count = get_next_4_bytes!();
                 let bc_length = get_next_4_bytes!() as usize;
-                let body = data[const_table.bc_counter..{const_table.bc_counter += bc_length; const_table.bc_counter + 1}].to_vec();
+                let body = data[const_table.bc_counter..{
+                    const_table.bc_counter += bc_length;
+                    const_table.bc_counter + 1
+                }].to_vec();
+
                 if id >= const_table.funcs.len() {
-                    const_table.funcs.resize(id + 1, FuncConst{..Default::default()})
+                    const_table.funcs.resize(id + 1,FuncConst{
+                        ..Default::default()
+                    })
                 }
-                const_table.funcs.push(FuncConst {
+
+                info!("Added function \"{}\" to the constants table", name);
+                const_table.funcs[id] = (FuncConst {
                     name: name,
                     arg_count: arg_count,
                     local_count: local_count,
                     body: body
                 });
-                debug!("Added a function to the constants table");
             },
             ConstInstr::END => {
                 debug!("Reached end of constants table");
