@@ -90,12 +90,12 @@ pub fn read_const_table(data: &[u8]) -> ConstTable {
                 }
 
                 info!("Added function \"{}\" to the constants table", name);
-                const_table.funcs[id] = (FuncConst {
+                const_table.funcs[id] = FuncConst {
                     name: name,
                     arg_count: arg_count,
                     local_count: local_count,
                     body: body
-                });
+                };
             },
             ConstInstr::END => {
                 debug!("Reached end of constants table");
