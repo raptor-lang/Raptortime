@@ -1,9 +1,12 @@
 extern crate argparse;
-extern crate byteorder;
-#[macro_use] extern crate enum_primitive;
+#[macro_use]
+extern crate enum_primitive;
 extern crate num;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+extern crate byteorder;
 
-#[macro_use] mod logger;
 mod utils;
 mod header;
 mod runtime;
@@ -11,10 +14,14 @@ mod interpreter;
 mod instructions;
 mod constants;
 
-use runtime::Runtime;
-
+use std::env;
+use env_logger::LogBuilder;
+use log::{LogRecord, LogLevelFilter};
 use argparse::{ArgumentParser, StoreTrue, Store, Print};
 
+use runtime::Runtime;
+
+const DEFAULT_LOG_LEVEL: LogLevelFilter = LogLevelFilter::Debug;
 pub static ACCEPTABLE_EXTENSIONS: [&'static str; 2] = ["crap", "crapt"];
 
 #[derive(Default, Debug)]
@@ -28,7 +35,6 @@ fn main() {
         debug: true,
         input: String::new(),
     };
-
     {   // this block limits the scope of borrows from ap.refer() calls
         let mut ap = ArgumentParser::new();
         ap.set_description("RaptorScript Runtime/Interpreter.");
@@ -44,6 +50,20 @@ fn main() {
         ap.parse_args_or_exit();
     }
 
+    // Logging stuff
+    let format = |record: &LogRecord| {
+        format!("[{}]: {}", record.level(), record.args())
+    };
+
+    let mut builder = LogBuilder::new();
+    if env::var("RUST_LOG").is_ok() {
+        builder.parse(&env::var("RUST_LOG").unwrap());
+    } else {
+        builder.format(format).filter(None, DEFAULT_LOG_LEVEL);
+    }
+    builder.init().unwrap();
+
+    // Parse input, start runtime
     if !options.input.is_empty() {
         if utils::should_open(&options.input) {
             let data = utils::try_open_file(&options.input, options.debug);
