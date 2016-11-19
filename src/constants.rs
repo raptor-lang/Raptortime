@@ -1,4 +1,3 @@
-use std::fmt;
 use std::str;
 use num::FromPrimitive;
 
@@ -10,17 +9,10 @@ pub struct FuncConst {
     pub body: Vec<u8>
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ConstTable {
     pub funcs: Vec<FuncConst>,
     pub bc_counter: usize
-}
-
-impl fmt::Debug for ConstTable {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        //TODO
-        unimplemented!()
-    }
 }
 
 // Eats a null byte terminated string
