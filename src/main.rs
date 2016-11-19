@@ -13,6 +13,7 @@ mod runtime;
 mod interpreter;
 mod instructions;
 mod constants;
+mod raptor_object;
 
 use std::env;
 use env_logger::LogBuilder;

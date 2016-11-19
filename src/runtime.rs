@@ -1,18 +1,21 @@
 use interpreter::{Interpreter, StackFrame};
+use raptor_object::RaptorObject;
 
 #[derive(Debug, Default)]
 pub struct Runtime {
     interpreter: Interpreter,
     call_stack: Vec<StackFrame>,
     options: ::Options,
+    memory: Vec<RaptorObject>
 }
 
 impl Runtime {
-    pub fn new(mut data: Vec<u8>, options: ::Options) -> Runtime {
+    pub fn new(data: Vec<u8>, options: ::Options) -> Runtime {
         let mut r = Runtime {
             interpreter: Interpreter::new(data, options.debug),
             call_stack: Vec::new(),
             options: options,
+            memory: vec![RaptorObject::new()],
         };
         let prog_bc = r.interpreter.prog_bytecode.clone();
         r.call_stack.push(

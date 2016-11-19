@@ -1,4 +1,3 @@
-use std::fmt;
 use num::FromPrimitive;
 
 use header::*;
@@ -220,6 +219,10 @@ impl StackFrame {
                     debug!("Loaded {} from local {}", val, index);
                     debug!("Op stack: {:?}", inpr.op_stack)
                 },
+                Instr::STOREFIELD => {unimplemented!()},
+                Instr::LOADFIELD => {unimplemented!()},
+                Instr::VECTORSTORE => {unimplemented!()},
+                Instr::VECTORLOAD => {unimplemented!()},
                 Instr::CALL => {
                     let id: u32 = self.get_next_4_bytes();
                     debug!("Calling func {}", self.id);
